@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CreditIQ Risk Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#c9a84c;--gold-dim:#7a6230;--gold-glow:rgba(201,168,76,0.15);
+  --surface:#0a0a0b;--surface-2:#111113;--surface-3:#17171a;--surface-4:#1e1e22;
+  --border:#2a2a2f;--border-bright:#3d3d45;
+  --text:#e8e6df;--text-2:#8a8880;--text-3:#4a4a50;
+  --red:#e05555;--green:#5ab87a;--amber:#d4843a;
+}
+body{background:var(--surface);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+.shell{display:grid;grid-template-columns:300px 1fr;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{background:var(--surface-2);border-right:1px solid var(--border);padding:28px 24px;overflow-y:auto;position:relative}
+.sidebar::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:32px}
+.brand-icon{width:32px;height:32px;border:1px solid var(--gold-dim);display:flex;align-items:center;justify-content:center}
+.brand-name{font-family:'DM Serif Display',serif;font-size:18px;letter-spacing:0.02em;color:var(--gold)}
+.brand-sub{font-size:10px;color:var(--text-3);letter-spacing:0.15em;text-transform:uppercase;margin-top:2px}
+.section-label{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;color:var(--text-2);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px}
+.field input,.field select{width:100%;background:var(--surface-3);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color 0.2s;border-radius:0}
+.field input:focus,.field select:focus{border-color:var(--gold-dim)}
+.field select{appearance:none;cursor:pointer}
+.section-block{margin-bottom:24px}
+.run-btn{width:100%;padding:13px;background:transparent;border:1px solid var(--gold);color:var(--gold);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:all 0.3s;margin-top:8px}
+.run-btn::before{content:'';position:absolute;inset:0;background:var(--gold-glow);opacity:0;transition:opacity 0.3s}
+.run-btn:hover::before{opacity:1}
+.run-btn:hover{box-shadow:0 0 20px rgba(201,168,76,0.2)}
+.run-btn:active{transform:scale(0.98)}
+
+/* MAIN */
+.main{padding:28px 32px;overflow-y:auto}
+.top-bar{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:32px}
+.page-title{font-family:'DM Serif Display',serif;font-size:26px;letter-spacing:0.01em}
+.page-title span{color:var(--gold)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--text-3);display:inline-block;margin-right:6px}
+.status-dot.live{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* KPI STRIP */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:28px}
+.kpi{background:var(--surface-2);padding:20px 18px;position:relative;overflow:hidden;transition:background 0.2s}
+.kpi::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:transparent;transition:background 0.3s}
+.kpi:hover{background:var(--surface-3)}
+.kpi-label{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px}
+.kpi-val{font-family:'DM Serif Display',serif;font-size:32px;line-height:1;transition:all 0.4s;min-height:38px}
+.kpi-sub{font-size:11px;color:var(--text-3);margin-top:6px;font-family:'DM Mono',monospace}
+.kpi.danger .kpi-val{color:var(--red)}
+.kpi.danger::after{background:var(--red)}
+.kpi.safe .kpi-val{color:var(--green)}
+.kpi.safe::after{background:var(--green)}
+.kpi.warn .kpi-val{color:var(--amber)}
+.kpi.warn::after{background:var(--amber)}
+.kpi.gold .kpi-val{color:var(--gold)}
+.kpi.gold::after{background:var(--gold)}
+
+/* GAUGE ROW */
+.gauge-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.panel{background:var(--surface-2);border:1px solid var(--border);padding:24px}
+.panel-title{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-3);margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.panel-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.gauge-wrap{display:flex;flex-direction:column;align-items:center}
+.gauge-svg{width:220px;height:130px}
+
+/* SHAP PANEL */
+.shap-panel{background:var(--surface-2);border:1px solid var(--border);padding:24px;margin-bottom:20px}
+.shap-row{display:grid;grid-template-columns:180px 1fr 60px;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.shap-row:last-child{border-bottom:none}
+.shap-name{font-size:12px;color:var(--text-2);font-family:'DM Mono',monospace;letter-spacing:0.03em}
+.shap-track{flex:1;height:4px;background:var(--surface-4);position:relative}
+.shap-fill{height:100%;position:absolute;top:0;transition:width 0.8s cubic-bezier(0.4,0,0.2,1)}
+.shap-fill.pos{right:50%;background:var(--red)}
+.shap-fill.neg{left:50%;background:var(--green)}
+.shap-center{position:absolute;top:-4px;left:50%;width:1px;height:12px;background:var(--border-bright)}
+.shap-val{font-family:'DM Mono',monospace;font-size:11px;text-align:right}
+.shap-val.pos{color:var(--red)}
+.shap-val.neg{color:var(--green)}
+
+/* RISK BAND */
+.band-panel{background:var(--surface-2);border:1px solid var(--border);padding:24px}
+.band-track{height:6px;background:var(--surface-4);position:relative;margin:16px 0 8px;overflow:hidden}
+.band-fill{height:100%;position:absolute;left:0;transition:width 1s cubic-bezier(0.4,0,0.2,1);background:linear-gradient(90deg,var(--green),var(--amber),var(--red))}
+.band-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);font-family:'DM Mono',monospace;letter-spacing:0.05em}
+.band-marker{position:absolute;top:-5px;width:2px;height:16px;background:white;transition:left 1s cubic-bezier(0.4,0,0.2,1);transform:translateX(-1px)}
+
+/* EMPTY STATE */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--text-3)}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:0.3;font-family:'DM Serif Display',serif}
+.empty-text{font-size:13px;letter-spacing:0.1em;text-transform:uppercase}
+
+/* ERROR TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface-3);border:1px solid var(--red);color:var(--red);padding:12px 18px;font-family:'DM Mono',monospace;font-size:12px;z-index:999;opacity:0;transform:translateY(8px);transition:all 0.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.animate-in{animation:fadeUp 0.5s ease forwards}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <rect x="1" y="1" width="6" height="6" fill="#c9a84c" opacity="0.9"/>
+          <rect x="9" y="1" width="6" height="6" fill="#c9a84c" opacity="0.5"/>
+          <rect x="1" y="9" width="6" height="6" fill="#c9a84c" opacity="0.5"/>
+          <rect x="9" y="9" width="6" height="6" fill="#c9a84c" opacity="0.9"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">CreditIQ</div>
+        <div class="brand-sub">Risk Engine v2</div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-label">Applicant</div>
+      <div class="field"><label>Age</label><input id="person_age" type="number" value="30"></div>
+      <div class="field"><label>Annual Income</label><input id="person_income" type="number" value="60000"></div>
+      <div class="field"><label>Home Ownership</label>
+        <select id="person_home_ownership">
+          <option>RENT</option><option>MORTGAGE</option><option>OWN</option><option>OTHER</option>
+        </select>
+      </div>
+      <div class="field"><label>Employment Length (yrs)</label><input id="person_emp_length" type="number" value="5"></div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-label">Loan</div>
+      <div class="field"><label>Loan Amount</label><input id="loan_amnt" type="number" value="15000"></div>
+      <div class="field"><label>Intent</label>
+        <select id="loan_intent">
+          <option>PERSONAL</option><option>EDUCATION</option><option>MEDICAL</option>
+          <option>VENTURE</option><option>HOMEIMPROVEMENT</option><option>DEBTCONSOLIDATION</option>
+        </select>
+      </div>
+      <div class="field"><label>Grade</label>
+        <select id="loan_grade">
+          <option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option>
+        </select>
+      </div>
+      <div class="field"><label>Interest Rate (%)</label><input id="loan_int_rate" type="number" step="0.1" value="11.5"></div>
+      <div class="field"><label>Loan / Income Ratio</label><input id="loan_percent_income" type="number" step="0.01" value="0.25"></div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-label">Credit</div>
+      <div class="field"><label>Previous Default</label>
+        <select id="cb_person_default_on_file"><option>N</option><option>Y</option></select>
+      </div>
+      <div class="field"><label>Credit History (yrs)</label><input id="cb_person_cred_hist_length" type="number" value="5"></div>
+    </div>
+
+    <button class="run-btn" onclick="runAssessment()">
+      <span id="btn-text">▶ Run Assessment</span>
+    </button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="top-bar">
+      <div>
+        <div class="page-title">Risk <span>Dashboard</span></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-3);font-family:'DM Mono',monospace">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Awaiting input</span>
+      </div>
+    </div>
+
+    <div class="kpi-strip animate-in">
+      <div class="kpi" id="kpi-risk">
+        <div class="kpi-label">Default Risk</div>
+        <div class="kpi-val" id="riskPercent">—</div>
+        <div class="kpi-sub">probability of default</div>
+      </div>
+      <div class="kpi" id="kpi-grade">
+        <div class="kpi-label">Loan Grade</div>
+        <div class="kpi-val" id="loanGrade">—</div>
+        <div class="kpi-sub">assigned tier</div>
+      </div>
+      <div class="kpi gold" id="kpi-score">
+        <div class="kpi-label">Credit Score</div>
+        <div class="kpi-val" id="creditScore">—</div>
+        <div class="kpi-sub">300 – 850 range</div>
+      </div>
+      <div class="kpi" id="kpi-band">
+        <div class="kpi-label">Risk Band</div>
+        <div class="kpi-val" id="riskBand">—</div>
+        <div class="kpi-sub">classification</div>
+      </div>
+    </div>
+
+    <div class="gauge-row animate-in">
+      <div class="panel">
+        <div class="panel-title">Default Risk Gauge</div>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 220 130">
+            <defs>
+              <linearGradient id="riskGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#5ab87a"/>
+                <stop offset="50%" stop-color="#d4843a"/>
+                <stop offset="100%" stop-color="#e05555"/>
+              </linearGradient>
+            </defs>
+            <path d="M20,120 A90,90 0 0,1 200,120" fill="none" stroke="#1e1e22" stroke-width="14" stroke-linecap="round"/>
+            <path d="M20,120 A90,90 0 0,1 200,120" fill="none" stroke="url(#riskGrad)" stroke-width="14" stroke-linecap="round" opacity="0.2"/>
+            <path id="riskArc" d="M20,120 A90,90 0 0,1 200,120" fill="none" stroke="url(#riskGrad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="283" style="transition:stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)"/>
+            <circle id="riskNeedle" cx="20" cy="120" r="5" fill="white" opacity="0" style="transition:all 1.2s cubic-bezier(0.4,0,0.2,1)"/>
+            <text id="riskGaugeVal" x="110" y="100" text-anchor="middle" font-family="'DM Serif Display',serif" font-size="28" fill="#e8e6df">—</text>
+            <text x="110" y="118" text-anchor="middle" font-family="'Syne',sans-serif" font-size="9" fill="#4a4a50" letter-spacing="2">RISK SCORE</text>
+            <text x="22" y="128" text-anchor="middle" font-family="'DM Mono',monospace" font-size="9" fill="#4a4a50">0</text>
+            <text x="198" y="128" text-anchor="middle" font-family="'DM Mono',monospace" font-size="9" fill="#4a4a50">100</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Credit Score Dial</div>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 220 130">
+            <defs>
+              <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#e05555"/>
+                <stop offset="40%" stop-color="#d4843a"/>
+                <stop offset="100%" stop-color="#c9a84c"/>
+              </linearGradient>
+            </defs>
+            <path d="M20,120 A90,90 0 0,1 200,120" fill="none" stroke="#1e1e22" stroke-width="14" stroke-linecap="round"/>
+            <path d="M20,120 A90,90 0 0,1 200,120" fill="none" stroke="url(#scoreGrad)" stroke-width="14" stroke-linecap="round" opacity="0.2"/>
+            <path id="scoreArc" d="M20,120 A90,90 0 0,1 200,120" fill="none" stroke="url(#scoreGrad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="283" style="transition:stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)"/>
+            <circle id="scoreNeedle" cx="20" cy="120" r="5" fill="#c9a84c" opacity="0" style="transition:all 1.2s cubic-bezier(0.4,0,0.2,1)"/>
+            <text id="scoreGaugeVal" x="110" y="100" text-anchor="middle" font-family="'DM Serif Display',serif" font-size="28" fill="#e8e6df">—</text>
+            <text x="110" y="118" text-anchor="middle" font-family="'Syne',sans-serif" font-size="9" fill="#4a4a50" letter-spacing="2">CREDIT SCORE</text>
+            <text x="22" y="128" text-anchor="middle" font-family="'DM Mono',monospace" font-size="9" fill="#4a4a50">300</text>
+            <text x="198" y="128" text-anchor="middle" font-family="'DM Mono',monospace" font-size="9" fill="#4a4a50">850</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="band-panel animate-in" style="margin-bottom:20px">
+      <div class="panel-title">Risk Band Spectrum</div>
+      <div class="band-track">
+        <div class="band-fill" id="bandFill" style="width:0%"></div>
+        <div class="band-marker" id="bandMarker" style="left:0%"></div>
+      </div>
+      <div class="band-labels">
+        <span>LOW RISK</span><span>MODERATE</span><span>HIGH RISK</span>
+      </div>
+    </div>
+
+    <div class="shap-panel animate-in">
+      <div class="panel-title">Feature Impact Analysis (SHAP)</div>
+      <div id="shapList">
+        <div class="empty-state">
+          <div class="empty-icon">∅</div>
+          <div class="empty-text">Run assessment to view feature weights</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = "http://127.0.0.1:8000/predict";
+
+function showToast(msg, isError=true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = isError ? 'var(--red)' : 'var(--green)';
+  t.style.color = isError ? 'var(--red)' : 'var(--green)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+function getArcPoint(pct) {
+  const angle = Math.PI * pct;
+  const cx = 110, cy = 120, r = 90;
+  return {
+    x: cx - r * Math.cos(angle),
+    y: cy - r * Math.sin(angle)
+  };
+}
+
+function animateGauge(arcId, needleId, pct) {
+  const arc = document.getElementById(arcId);
+  const needle = document.getElementById(needleId);
+  const totalLen = 283;
+  arc.style.strokeDashoffset = totalLen * (1 - pct);
+  const pt = getArcPoint(pct);
+  needle.setAttribute('cx', pt.x);
+  needle.setAttribute('cy', pt.y);
+  needle.setAttribute('opacity', '1');
+}
+
+function animateCounter(el, target, decimals, suffix) {
+  const duration = 900, startTime = performance.now();
+  function step(now) {
+    const t = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    el.textContent = (target * ease).toFixed(decimals) + (suffix || '');
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+async function runAssessment() {
+  const btn = document.getElementById('btn-text');
+  btn.textContent = '⏳ Analysing...';
+  document.getElementById('statusDot').className = 'status-dot';
+  document.getElementById('statusText').textContent = 'Processing...';
+
+  const payload = {
+    person_age: +document.getElementById('person_age').value,
+    person_income: +document.getElementById('person_income').value,
+    person_home_ownership: document.getElementById('person_home_ownership').value,
+    person_emp_length: +document.getElementById('person_emp_length').value,
+    loan_amnt: +document.getElementById('loan_amnt').value,
+    loan_intent: document.getElementById('loan_intent').value,
+    loan_grade: document.getElementById('loan_grade').value,
+    loan_int_rate: +document.getElementById('loan_int_rate').value,
+    loan_percent_income: +document.getElementById('loan_percent_income').value,
+    cb_person_default_on_file: document.getElementById('cb_person_default_on_file').value,
+    cb_person_cred_hist_length: +document.getElementById('cb_person_cred_hist_length').value
+  };
+
+  try {
+    const res = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    updateDashboard(data);
+    btn.textContent = '✓ Assessment Complete';
+    document.getElementById('statusDot').className = 'status-dot live';
+    document.getElementById('statusText').textContent = 'Live · ' + new Date().toLocaleTimeString();
+    showToast('Assessment complete', false);
+  } catch (e) {
+    btn.textContent = '▶ Run Assessment';
+    document.getElementById('statusDot').className = 'status-dot';
+    document.getElementById('statusText').textContent = 'Error';
+    showToast('Could not reach API: ' + e.message);
+  }
+}
+
+function updateDashboard(data) {
+  const rp = data.risk_percent;
+  const band = (data.risk_band || '').toUpperCase();
+
+  // KPI Risk
+  const riskKpi = document.getElementById('kpi-risk');
+  riskKpi.className = 'kpi ' + (rp >= 60 ? 'danger' : rp >= 35 ? 'warn' : 'safe');
+  animateCounter(document.getElementById('riskPercent'), rp, 1, '%');
+
+  // KPI Grade
+  const grade = data.loan_grade;
+  document.getElementById('loanGrade').textContent = grade;
+  document.getElementById('kpi-grade').className = 'kpi ' + (['A','B'].includes(grade) ? 'safe' : ['E','F','G'].includes(grade) ? 'danger' : 'warn');
+
+  // KPI Score
+  animateCounter(document.getElementById('creditScore'), data.credit_score, 0, '');
+
+  // KPI Band
+  document.getElementById('riskBand').textContent = band;
+  document.getElementById('kpi-band').className = 'kpi ' + (band === 'LOW' ? 'safe' : band === 'HIGH' ? 'danger' : 'warn');
+
+  // Risk gauge
+  animateGauge('riskArc', 'riskNeedle', rp / 100);
+  setTimeout(() => { document.getElementById('riskGaugeVal').textContent = rp.toFixed(1) + '%'; }, 100);
+
+  // Score gauge
+  const scorePct = (data.credit_score - 300) / 550;
+  animateGauge('scoreArc', 'scoreNeedle', scorePct);
+  setTimeout(() => { document.getElementById('scoreGaugeVal').textContent = data.credit_score; }, 100);
+
+  // Band fill
+  document.getElementById('bandFill').style.width = rp + '%';
+  document.getElementById('bandMarker').style.left = rp + '%';
+
+  // SHAP
+  renderSHAP(data.top_features || []);
+}
+
+function renderSHAP(features) {
+  const box = document.getElementById('shapList');
+  box.innerHTML = '';
+  if (!features.length) {
+    box.innerHTML = '<div class="empty-state"><div class="empty-text">No feature data returned</div></div>';
+    return;
+  }
+  const maxImpact = Math.max(...features.map(f => Math.abs(f.impact)));
+  features.forEach((f, i) => {
+    const pct = Math.abs(f.impact) / maxImpact * 48;
+    const isPos = f.impact > 0;
+    const row = document.createElement('div');
+    row.className = 'shap-row';
+    row.innerHTML = `
+      <div class="shap-name">${f.feature}</div>
+      <div class="shap-track">
+        <div class="shap-center"></div>
+        <div class="shap-fill ${isPos ? 'pos' : 'neg'}" style="width:0%;transition:width 0.9s ${i * 0.06}s cubic-bezier(0.4,0,0.2,1)"></div>
+      </div>
+      <div class="shap-val ${isPos ? 'pos' : 'neg'}">${isPos ? '+' : ''}${f.impact.toFixed(3)}</div>
+    `;
+    box.appendChild(row);
+    setTimeout(() => {
+      row.querySelector('.shap-fill').style.width = pct + '%';
+    }, 60);
+  });
+}
+</script>
+</body>
+</html>
