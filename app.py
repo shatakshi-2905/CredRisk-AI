@@ -4,14 +4,14 @@ import numpy as np
 import joblib
 import shap
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 
 # ---------------------------------------------------
-# FASTAPI SETUP
+# FASTAPI APP
 # ---------------------------------------------------
 
 app = FastAPI()
 
+# Allow requests from Netlify or anywhere
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,9 +20,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def home():
-    return FileResponse("index.html")
+# ---------------------------------------------------
+# HEALTH CHECK (for Render)
+# ---------------------------------------------------
+
+@app.get("/health")
+def health():
+    return {"status": "running"}
 
 
 # ---------------------------------------------------
@@ -35,7 +39,7 @@ feature_columns = joblib.load("feature_columns.pkl")
 
 explainer = shap.TreeExplainer(model)
 
-print("✅ Model and encoders loaded")
+print("Model loaded successfully")
 
 
 # ---------------------------------------------------
@@ -66,7 +70,7 @@ def engineer_features(data):
 
 
 # ---------------------------------------------------
-# ENCODE CATEGORICALS
+# ENCODE CATEGORICAL VARIABLES
 # ---------------------------------------------------
 
 def encode_data(data):
@@ -135,7 +139,7 @@ def credit_score(risk):
 
 
 # ---------------------------------------------------
-# PREDICTION API
+# PREDICTION ENDPOINT
 # ---------------------------------------------------
 
 @app.post("/predict")
@@ -143,48 +147,31 @@ def predict(input_data: dict):
 
     row = input_data.copy()
 
-    # --------------------------------
     # Feature engineering
-    # --------------------------------
-
     row = engineer_features(row)
 
-    # --------------------------------
     # Encode categoricals
-    # --------------------------------
-
     row = encode_data(row)
 
-    # --------------------------------
-    # Convert to DataFrame
-    # --------------------------------
-
+    # Convert to dataframe
     df = pd.DataFrame([row])
 
-    # Ensure exact training column order
+    # Ensure same column order as training
     df = df.reindex(columns=feature_columns, fill_value=0)
 
-    # --------------------------------
-    # MODEL PREDICTION
-    # --------------------------------
-
+    # Predict probability
     prob = float(model.predict_proba(df)[0][1])
 
     risk_percent = prob * 100
 
-    # --------------------------------
-    # DERIVED METRICS
-    # --------------------------------
-
+    # Derived metrics
     grade = assign_grade(risk_percent)
-
     band = risk_band(risk_percent)
-
     score = credit_score(risk_percent)
 
-    # --------------------------------
+    # -----------------------
     # SHAP EXPLANATION
-    # --------------------------------
+    # -----------------------
 
     shap_values = explainer.shap_values(df)
 
@@ -203,9 +190,9 @@ def predict(input_data: dict):
         reverse=True
     )[:8]
 
-    # --------------------------------
+    # -----------------------
     # RESPONSE
-    # --------------------------------
+    # -----------------------
 
     return {
 
