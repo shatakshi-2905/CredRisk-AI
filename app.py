@@ -6,45 +6,55 @@ import shap
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
+# ---------------------------------------------------
+# FASTAPI SETUP
+# ---------------------------------------------------
+
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow frontend
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # allow POST, OPTIONS
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
 @app.get("/")
 def home():
     return FileResponse("index.html")
 
-# -----------------------------
-# Load Artifacts
-# -----------------------------
+
+# ---------------------------------------------------
+# LOAD MODEL ARTIFACTS
+# ---------------------------------------------------
+
 model = joblib.load("model.pkl")
 encoders = joblib.load("encoders.pkl")
 feature_columns = joblib.load("feature_columns.pkl")
 
 explainer = shap.TreeExplainer(model)
 
-print("Model and encoders loaded")
+print("✅ Model and encoders loaded")
 
 
-# -----------------------------
-# Feature Engineering
-# -----------------------------
+# ---------------------------------------------------
+# FEATURE ENGINEERING
+# ---------------------------------------------------
+
 def engineer_features(data):
 
-    data["loan_to_income"] = data["loan_amnt"] / data["person_income"]
+    income = max(data["person_income"], 1)
+
+    data["loan_to_income"] = data["loan_amnt"] / income
 
     data["income_per_credit_year"] = (
-        data["person_income"] /
+        income /
         (data["cb_person_cred_hist_length"] + 1)
     )
 
     data["interest_income_ratio"] = (
-        data["loan_int_rate"] /
-        data["person_income"]
+        data["loan_int_rate"] / income
     )
 
     data["loan_income_interaction"] = (
@@ -55,9 +65,10 @@ def engineer_features(data):
     return data
 
 
-# -----------------------------
-# Encoding
-# -----------------------------
+# ---------------------------------------------------
+# ENCODE CATEGORICALS
+# ---------------------------------------------------
+
 def encode_data(data):
 
     for col, encoder in encoders.items():
@@ -67,16 +78,17 @@ def encode_data(data):
             value = str(data[col])
 
             if value in encoder.classes_:
-                data[col] = encoder.transform([value])[0]
+                data[col] = int(encoder.transform([value])[0])
             else:
                 data[col] = 0
 
     return data
 
 
-# -----------------------------
-# Loan Grade Logic
-# -----------------------------
+# ---------------------------------------------------
+# LOAN GRADE FROM RISK
+# ---------------------------------------------------
+
 def assign_grade(risk):
 
     if risk < 10:
@@ -93,9 +105,10 @@ def assign_grade(risk):
         return "F"
 
 
-# -----------------------------
-# Risk Band
-# -----------------------------
+# ---------------------------------------------------
+# RISK BAND
+# ---------------------------------------------------
+
 def risk_band(risk):
 
     if risk < 10:
@@ -110,9 +123,10 @@ def risk_band(risk):
         return "Very High"
 
 
-# -----------------------------
-# Credit Score
-# -----------------------------
+# ---------------------------------------------------
+# CREDIT SCORE
+# ---------------------------------------------------
+
 def credit_score(risk):
 
     score = 850 - (risk * 5)
@@ -120,43 +134,58 @@ def credit_score(risk):
     return int(max(300, min(score, 850)))
 
 
-# -----------------------------
-# Prediction API
-# -----------------------------
+# ---------------------------------------------------
+# PREDICTION API
+# ---------------------------------------------------
+
 @app.post("/predict")
 def predict(input_data: dict):
 
     row = input_data.copy()
 
+    # --------------------------------
     # Feature engineering
+    # --------------------------------
+
     row = engineer_features(row)
 
+    # --------------------------------
     # Encode categoricals
+    # --------------------------------
+
     row = encode_data(row)
 
-    # Convert to dataframe
+    # --------------------------------
+    # Convert to DataFrame
+    # --------------------------------
+
     df = pd.DataFrame([row])
 
-    # Ensure column order
-    df = df[feature_columns]
+    # Ensure exact training column order
+    df = df.reindex(columns=feature_columns, fill_value=0)
 
-    # Predict probability
+    # --------------------------------
+    # MODEL PREDICTION
+    # --------------------------------
+
     prob = float(model.predict_proba(df)[0][1])
 
     risk_percent = prob * 100
 
-    # Loan grade
+    # --------------------------------
+    # DERIVED METRICS
+    # --------------------------------
+
     grade = assign_grade(risk_percent)
 
-    # Risk band
     band = risk_band(risk_percent)
 
-    # Credit score
     score = credit_score(risk_percent)
 
-    # -----------------------------
-    # SHAP Explanation
-    # -----------------------------
+    # --------------------------------
+    # SHAP EXPLANATION
+    # --------------------------------
+
     shap_values = explainer.shap_values(df)
 
     impacts = []
@@ -174,9 +203,10 @@ def predict(input_data: dict):
         reverse=True
     )[:8]
 
-    # -----------------------------
-    # Response
-    # -----------------------------
+    # --------------------------------
+    # RESPONSE
+    # --------------------------------
+
     return {
 
         "risk_probability": round(prob, 4),
