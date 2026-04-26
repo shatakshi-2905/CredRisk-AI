@@ -2,7 +2,7 @@
 
 CredRisk AI is an end-to-end machine learning system for predicting credit risk and explaining results using SHAP and LLMs. It combines XGBoost, FastAPI, and a chatbot interface to provide both accurate predictions and human-readable insights.
 
-🔗 Live Demo: https://credit-risk-detection.netlify.app/
+🔗 Live Demo: https://credrisk-ai.netlify.app/
 
 ---
 
