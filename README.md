@@ -56,7 +56,10 @@ ml-model-host/ │ ├── main.py ├── model.pkl ├── featu
 ## Setup
 
 ```bash
-git clone https://github.com/shatakshi-2905/ml-model-host.git
-cd ml-model-host
+git clone https://github.com/shatakshi-2905/CredRisk-AI.git
+cd CredRisk-AI
 pip install -r requirements.txt
-uvicorn main:app --reload
+uvicorn app:app --reload
+```
+
+Then open `index.html` in a browser, or check the API at http://127.0.0.1:8000/health.
