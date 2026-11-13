@@ -62,6 +62,15 @@ CredRisk-AI/
 
 ---
 
+## API
+
+| Method | Path | What it does |
+| --- | --- | --- |
+| GET | `/health` | Returns `{"status": "running"}` (used by Render) |
+| POST | `/predict` | Takes the applicant's details as JSON; returns the risk %, grade, band, credit score and SHAP explanation |
+
+---
+
 ## Setup
 
 ```bash
