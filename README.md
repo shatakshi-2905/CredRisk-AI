@@ -29,7 +29,16 @@ CredRisk AI is an end-to-end machine learning system for predicting credit risk 
 
 ## Project Structure
 
-ml-model-host/ │ ├── main.py ├── model.pkl ├── features.pkl ├── encoding.pkl ├── requirements.txt └── README.md
+```
+CredRisk-AI/
+├── app.py                 # FastAPI app: /health and /predict
+├── model.pkl              # trained XGBoost model
+├── encoders.pkl           # encoders for categorical features
+├── feature_columns.pkl    # feature order used in training
+├── index.html             # frontend
+├── requirements.txt
+└── README.md
+```
 
 
 ---
